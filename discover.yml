@@ -1,6 +1,6 @@
 ---
 - name: Dynamic Service Discovery
-  hosts: all
+  hosts: dynamic_hosts
   gather_facts: false
 
   tasks:
