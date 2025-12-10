@@ -1,6 +1,6 @@
 ---
 - name: Dynamic Service Discovery
-  hosts: dynamic_hosts
+  hosts: all
   gather_facts: false
 
   # vars_files:
