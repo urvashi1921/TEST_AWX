@@ -1,0 +1,6 @@
+---
+plugin: constructed
+strict: false
+
+groups:
+  dynamic_hosts: inventory_hostname is defined

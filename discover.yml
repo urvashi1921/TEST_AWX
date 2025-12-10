@@ -1,0 +1,28 @@
+---
+- name: Dynamic Service Discovery
+  hosts: dynamic_hosts
+  gather_facts: false
+
+  # vars_files:
+  #   - ../vars/defaults.yml
+
+  tasks:
+
+    - name: Print batch details
+      debug:
+        msg: >
+          Starting service discovery for batch {{ batch_id }}
+          requested by {{ requested_by }}
+          servers = {{ runtime_hosts | length }}
+
+    - name: Check host reachable
+      ping:
+
+    - name: Simulated service discovery on host
+      shell: |
+        echo "Batch: {{ batch_id }}, Host: {{ inventory_hostname }}, IP: {{ ansible_host }}" \
+        >> {{ output_dir }}/{{ inventory_hostname }}.log
+
+    - name: Print completion message
+      debug:
+        msg: "Completed discovery on {{ inventory_hostname }} for batch {{ batch_id }}"
