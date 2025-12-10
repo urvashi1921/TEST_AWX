@@ -4,6 +4,8 @@
   gather_facts: false
 
   tasks:
+    - debug:
+        msg: "Host {{ inventory_hostname }} - IP {{ ansible_host }}"
 
     - name: Print batch details
       debug:
