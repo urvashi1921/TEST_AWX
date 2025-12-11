@@ -1,3 +1,0 @@
----
-plugin: vars
-hosts: "{{ runtime_hosts }}"
