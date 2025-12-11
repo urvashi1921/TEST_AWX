@@ -1,0 +1,18 @@
+- name: Print batch details
+  hosts: localhost
+  gather_facts: no
+ 
+  tasks:
+ 
+    - name: Print Batch ID
+      debug:
+        msg: "Batch ID: {{ input_batch.batch_id }}"
+ 
+    - name: Print Batch Size
+      debug:
+        msg: "Batch Size: {{ input_batch.batch_size }}"
+ 
+    - name: Print Each Host and IP
+      debug:
+        msg: "Host: {{ item.name }} | IP: {{ item.ansible_host }}"
+      loop: "{{ input_batch.hosts }}"
