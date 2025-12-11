@@ -1,0 +1,94 @@
+---
+- name: Build Dynamic Inventory from Extra Vars
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Display job information
+      debug:
+        msg:
+          - "========================================"
+          - "AWX Dynamic Inventory Job Started"
+          - "========================================"
+          - "Batch ID: {{ batch_id | default('BATCH000') }}"
+          - "Requested By: {{ requested_by | default('API') }}"
+          - "Hosts Count: {{ runtime_hosts | default([]) | length }}"
+          - "========================================"
+
+    - name: Validate runtime_hosts is provided
+      fail:
+        msg: "ERROR: runtime_hosts variable is required but not provided!"
+      when: runtime_hosts is not defined or runtime_hosts | length == 0
+
+    - name: Add hosts to in-memory inventory
+      add_host:
+        name: "{{ item.name }}"
+        ansible_host: "{{ item.ip }}"
+        ansible_user: "{{ item.user | default('ubuntu') }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        groups:
+          - dynamic_servers
+        host_batch_id: "{{ batch_id | default('BATCH000') }}"
+        host_requested_by: "{{ requested_by | default('API') }}"
+        host_output_dir: "{{ output_dir | default('/tmp/awx-logs') }}"
+      loop: "{{ runtime_hosts }}"
+
+    - name: Show added hosts
+      debug:
+        msg: "Added {{ runtime_hosts | length }} hosts to dynamic_servers group"
+
+
+- name: Execute Tasks on Dynamic Servers
+  hosts: dynamic_servers
+  gather_facts: true
+  become: yes
+
+  tasks:
+    - name: Show target host info
+      debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "IP: {{ ansible_host }}"
+          - "Batch: {{ host_batch_id }}"
+
+    - name: Get hostname
+      command: hostname -f
+      register: cmd_hostname
+      changed_when: false
+      ignore_errors: true
+
+    - name: Get IP address
+      shell: hostname -I | awk '{print $1}'
+      register: cmd_ip
+      changed_when: false
+
+    - name: Get OS info
+      shell: cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '"'
+      register: cmd_os
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display system report
+      debug:
+        msg:
+          - "=== System Report ==="
+          - "Hostname: {{ cmd_hostname.stdout | default('N/A') }}"
+          - "IP: {{ cmd_ip.stdout | default('N/A') }}"
+          - "OS: {{ cmd_os.stdout | default('N/A') }}"
+          - "====================="
+
+- name: Summary
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Job completion summary
+      debug:
+        msg:
+          - "========================================"
+          - "AWX Job Completed Successfully!"
+          - "========================================"
+          - "Hosts Processed: {{ groups['dynamic_servers'] | length }}"
+          - "========================================"
