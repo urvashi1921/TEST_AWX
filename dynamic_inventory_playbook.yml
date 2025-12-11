@@ -8,7 +8,7 @@
   gather_facts: false
   
   vars:
-    runtime_hosts: []  # Will be passed from AWX API
+    runtime_hosts: []
     batch_id: "{{ batch_id | default('BATCH000') }}"
     requested_by: "{{ requested_by | default('API') }}"
     output_dir: "{{ output_dir | default('/tmp/awx-logs') }}"
@@ -17,13 +17,13 @@
     - name: Display job information
       debug:
         msg: |
-          ╔══════════════════════════════════════════╗
-          ║  AWX Dynamic Inventory Job Started       ║
-          ╠══════════════════════════════════════════╣
-          ║  Batch ID: {{ batch_id }}
-          ║  Requested By: {{ requested_by }}
-          ║  Hosts Count: {{ runtime_hosts | length }}
-          ╚══════════════════════════════════════════╝
+          ========================================
+          AWX Dynamic Inventory Job Started
+          ========================================
+          Batch ID: {{ batch_id }}
+          Requested By: {{ requested_by }}
+          Hosts Count: {{ runtime_hosts | length }}
+          ========================================
 
     - name: Add hosts to in-memory inventory
       add_host:
@@ -33,7 +33,6 @@
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         groups:
           - dynamic_servers
-        # Pass through custom variables
         batch_id: "{{ batch_id }}"
         requested_by: "{{ requested_by }}"
         output_dir: "{{ output_dir }}"
@@ -55,10 +54,10 @@
     - name: Show target host info
       debug:
         msg: |
-          🖥️  Host: {{ inventory_hostname }}
-          🌐  IP: {{ ansible_host }}
-          📋  Batch: {{ batch_id }}
-          👤  Requested By: {{ requested_by }}
+          Host: {{ inventory_hostname }}
+          IP: {{ ansible_host }}
+          Batch: {{ batch_id }}
+          Requested By: {{ requested_by }}
 
     - name: Create output directory
       file:
@@ -66,24 +65,59 @@
         state: directory
         mode: '0755'
 
-    - name: Collect system facts
-      shell: |
-        echo "=== System Report ==="
-        echo "Hostname: $(hostname -f)"
-        echo "IP: $(hostname -I | awk '{print $1}')"
-        echo "OS: $(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2)"
-        echo "Kernel: $(uname -r)"
-        echo "CPU: $(nproc) cores"
-        echo "Memory: $(free -h | awk '/Mem:/{print $2}')"
-        echo "Disk: $(df -h / | awk 'NR==2{print $4}') free"
-        echo "Uptime: $(uptime -p)"
-        echo "===================="
-      register: system_report
+    - name: Get hostname
+      command: hostname -f
+      register: cmd_hostname
+      changed_when: false
+
+    - name: Get IP address
+      shell: hostname -I | awk '{print $1}'
+      register: cmd_ip
+      changed_when: false
+
+    - name: Get OS info
+      shell: cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '"'
+      register: cmd_os
+      changed_when: false
+
+    - name: Get kernel version
+      command: uname -r
+      register: cmd_kernel
+      changed_when: false
+
+    - name: Get CPU count
+      command: nproc
+      register: cmd_cpu
+      changed_when: false
+
+    - name: Get memory info
+      shell: free -h | awk '/Mem:/{print $2}'
+      register: cmd_memory
+      changed_when: false
+
+    - name: Get disk info
+      shell: df -h / | awk 'NR==2{print $4}'
+      register: cmd_disk
+      changed_when: false
+
+    - name: Get uptime
+      command: uptime -p
+      register: cmd_uptime
       changed_when: false
 
     - name: Display system report
       debug:
-        var: system_report.stdout_lines
+        msg: |
+          === System Report ===
+          Hostname: {{ cmd_hostname.stdout }}
+          IP: {{ cmd_ip.stdout }}
+          OS: {{ cmd_os.stdout }}
+          Kernel: {{ cmd_kernel.stdout }}
+          CPU: {{ cmd_cpu.stdout }} cores
+          Memory: {{ cmd_memory.stdout }}
+          Disk Free: {{ cmd_disk.stdout }}
+          Uptime: {{ cmd_uptime.stdout }}
+          =====================
 
     - name: Save report to file
       copy:
@@ -94,13 +128,22 @@
           Batch ID: {{ batch_id }}
           Requested By: {{ requested_by }}
           
-          {{ system_report.stdout }}
+          === System Report ===
+          Hostname: {{ cmd_hostname.stdout }}
+          IP: {{ cmd_ip.stdout }}
+          OS: {{ cmd_os.stdout }}
+          Kernel: {{ cmd_kernel.stdout }}
+          CPU: {{ cmd_cpu.stdout }} cores
+          Memory: {{ cmd_memory.stdout }}
+          Disk Free: {{ cmd_disk.stdout }}
+          Uptime: {{ cmd_uptime.stdout }}
+          =====================
         dest: "{{ output_dir }}/report_{{ inventory_hostname }}_{{ batch_id }}.txt"
         mode: '0644'
 
     - name: Success message
       debug:
-        msg: "✅ Completed successfully on {{ inventory_hostname }} ({{ ansible_host }})"
+        msg: "Completed successfully on {{ inventory_hostname }} ({{ ansible_host }})"
 
 
 - name: Summary
@@ -111,9 +154,9 @@
     - name: Job completion summary
       debug:
         msg: |
-          ╔══════════════════════════════════════════╗
-          ║  ✅ AWX Job Completed Successfully!      ║
-          ╠══════════════════════════════════════════╣
-          ║  Batch ID: {{ batch_id }}
-          ║  Hosts Processed: {{ groups['dynamic_servers'] | length }}
-          ╚══════════════════════════════════════════╝
+          ========================================
+          AWX Job Completed Successfully!
+          ========================================
+          Batch ID: {{ batch_id }}
+          Hosts Processed: {{ groups['dynamic_servers'] | length }}
+          ========================================
